@@ -1087,3 +1087,52 @@ body {
   color: white;
 }
 
+/* 🌊 Crystal Clear Water Background */
+
+body {
+  background:
+    radial-gradient(
+      ellipse at 15% 20%,
+      rgba(160, 245, 255, 0.85),
+      transparent 35%
+    ),
+    radial-gradient(
+      ellipse at 85% 25%,
+      rgba(67, 205, 235, 0.65),
+      transparent 38%
+    ),
+    radial-gradient(
+      ellipse at 45% 90%,
+      rgba(35, 160, 210, 0.75),
+      transparent 45%
+    ),
+    linear-gradient(
+      135deg,
+      #d9fbff 0%,
+      #8de9f5 25%,
+      #48c7e5 55%,
+      #a5f3fa 78%,
+      #e4fdff 100%
+    );
+
+  background-attachment: fixed;
+  color: #063247;
+}
+
+/* Water-like translucent panels */
+.hero-art,
+.camera-card,
+.frame-panel,
+.step-card,
+.closing-cta {
+  background: rgba(225, 252, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+
+  box-shadow:
+    inset 0 2px 8px rgba(255, 255, 255, 0.5),
+    0 12px 35px rgba(20, 130, 165, 0.13);
+}
+
