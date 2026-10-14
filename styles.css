@@ -926,3 +926,164 @@ a:focus-visible {
   }
 }
 
+/* 💧 TRYNSEE — AQUA GLASSMORPHISM */
+
+:root {
+  --bg: #071923;
+  --surface: rgba(174, 235, 255, 0.075);
+  --surface-light: rgba(180, 240, 255, 0.13);
+  --text: #effcff;
+  --muted: #a4c5d2;
+  --accent: #80f2ff;
+  --border: rgba(190, 245, 255, 0.22);
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 12% 10%, #164d64 0%, transparent 38%),
+    radial-gradient(ellipse at 88% 42%, #123b58 0%, transparent 42%),
+    linear-gradient(135deg, #06151f, #0a2635 55%, #071923);
+  background-attachment: fixed;
+}
+
+.navbar {
+  background: rgba(8, 30, 43, 0.62);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border-bottom: 1px solid rgba(190, 245, 255, 0.18);
+}
+
+.hero-art,
+.camera-card,
+.frame-panel,
+.step-card,
+.closing-cta {
+  background: linear-gradient(
+    135deg,
+    rgba(200, 245, 255, 0.13),
+    rgba(110, 205, 235, 0.035) 55%,
+    rgba(150, 230, 255, 0.08)
+  );
+  border: 1px solid rgba(190, 245, 255, 0.24);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.13),
+    0 18px 50px rgba(0, 8, 20, 0.22);
+  backdrop-filter: blur(22px) saturate(145%);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+}
+
+.hero-art {
+  background:
+    radial-gradient(
+      ellipse at 50% 20%,
+      rgba(100, 235, 255, 0.24),
+      transparent 65%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(130, 220, 255, 0.13),
+      rgba(8, 35, 52, 0.38)
+    );
+  border-radius: 28px;
+}
+
+.try-section {
+  background: rgba(5, 23, 34, 0.32);
+  border-color: var(--border);
+}
+
+.camera-stage {
+  background:
+    radial-gradient(
+      ellipse at 50% 40%,
+      rgba(95, 220, 255, 0.14),
+      transparent 65%
+    ),
+    rgba(4, 22, 33, 0.72);
+}
+
+.floating-card {
+  background: rgba(135, 218, 240, 0.13);
+  border: 1px solid rgba(205, 248, 255, 0.28);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  box-shadow: 0 12px 35px rgba(0, 10, 25, 0.3);
+}
+
+.button {
+  border-radius: 14px;
+  transition: all 0.25s ease;
+}
+
+.button-primary {
+  color: #06202b;
+  background: linear-gradient(135deg, #b4f8ff, #67ddeb);
+  box-shadow: 0 5px 25px rgba(91, 222, 255, 0.2);
+}
+
+.button-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #e0fcff, #80f2ff);
+  box-shadow: 0 8px 30px rgba(91, 222, 255, 0.35);
+}
+
+.button-secondary,
+.nav-cta {
+  background: rgba(180, 240, 255, 0.055);
+  border: 1px solid rgba(190, 245, 255, 0.22);
+  backdrop-filter: blur(12px);
+}
+
+.frame-option {
+  background: rgba(180, 240, 255, 0.035);
+  border-color: rgba(190, 245, 255, 0.15);
+  border-radius: 14px;
+}
+
+.frame-option:hover,
+.frame-option.active {
+  background: rgba(105, 225, 255, 0.12);
+  border-color: rgba(128, 242, 255, 0.7);
+  box-shadow: inset 0 0 22px rgba(105, 225, 255, 0.06);
+}
+
+.frame-preview,
+.step-icon,
+.mini-icon,
+.check-icon {
+  background: rgba(110, 225, 255, 0.12);
+  color: #a0f5ff;
+  border: 1px solid rgba(190, 245, 255, 0.13);
+}
+
+.hero h1 span,
+.section-heading h2 span,
+.how-section h2 span {
+  color: #91f1ff;
+  text-shadow: 0 0 25px rgba(100, 225, 255, 0.18);
+}
+
+.eyebrow,
+.live-dot,
+.camera-status.is-on {
+  color: #91f1ff;
+}
+
+.live-dot {
+  background: #91f1ff;
+  box-shadow: 0 0 14px rgba(100, 225, 255, 0.65);
+}
+
+.step-card:hover {
+  border-color: rgba(128, 242, 255, 0.55);
+  transform: translateY(-5px);
+}
+
+.closing-cta {
+  border-radius: 24px;
+}
+
+::selection {
+  background: rgba(128, 242, 255, 0.35);
+  color: white;
+}
+
