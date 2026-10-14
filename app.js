@@ -1,142 +1,121 @@
 
-"use strict";
-
-// TryNSee - Virtual Glasses Try-On
-// Camera processing runs in the browser.
-
 const video = document.getElementById("camera-video");
-const canvas = document.getElementById("camera-canvas");
+const canvas = document.getElementById("glasses-canvas");
 const ctx = canvas.getContext("2d");
 
-const cameraStage = document.getElementById("camera-stage");
-const placeholder = document.getElementById("camera-placeholder");
 const startButton = document.getElementById("start-camera");
 const stopButton = document.getElementById("stop-camera");
-const captureButton = document.getElementById("capture-photo");
-const cameraStatus = document.getElementById("camera-status");
-const cameraMessage = document.getElementById("camera-message");
-const cameraHint = document.getElementById("camera-hint");
-const frameButtons = document.querySelectorAll(".frame-option");
+const snapshotButton = document.getElementById("take-snapshot");
+const statusText = document.getElementById("camera-status");
+const placeholder = document.getElementById("camera-placeholder");
+const liveLabel = document.getElementById("live-label");
+const liveIndicator = document.querySelector(".live-indicator");
+const frameLabel = document.getElementById("camera-overlay-label");
 
-let cameraStream = null;
-let faceLandmarker = null;
-let animationId = null;
-let selectedFrame = "classic";
-let lastVideoTime = -1;
-let trackingReady = false;
-let loadingVision = null;
+document.getElementById("year").textContent = new Date().getFullYear();
 
-// Different frame designs
-const frameStyles = {
-  classic: {
-    color: "#15151b",
-    lens: "rgba(190, 225, 240, 0.10)",
-    shape: "classic",
-    lineWidth: 0.045
-  },
-  round: {
-    color: "#292a32",
-    lens: "rgba(190, 225, 240, 0.13)",
-    shape: "round",
-    lineWidth: 0.045
-  },
-  aviator: {
-    color: "#b9a16d",
-    lens: "rgba(190, 225, 240, 0.15)",
-    shape: "aviator",
-    lineWidth: 0.035
-  },
-  clear: {
-    color: "rgba(190, 225, 240, 0.85)",
-    lens: "rgba(190, 225, 240, 0.06)",
-    shape: "clear",
-    lineWidth: 0.035
-  }
+const frames = {
+  classic: { name: "THE CLASSIC", color: "#20201c", width: 0.23, style: "rect" },
+  round:   { name: "THE ROUND", color: "#51483c", width: 0.22, style: "round" },
+  aviator: { name: "THE AVIATOR", color: "#b49a5c", width: 0.24, style: "aviator" },
+  crystal: { name: "THE CRYSTAL", color: "#c0ad92", width: 0.23, style: "rect" }
 };
 
-// Update the selected frame
-frameButtons.forEach((button) => {
+let selectedFrame = "classic";
+let stream = null;
+let faceLandmarker = null;
+let animationId = null;
+let running = false;
+let lastVideoTime = -1;
+let initializing = false;
+
+function setStatus(message) {
+  statusText.textContent = message;
+}
+
+function selectFrame(frameName) {
+  if (!frames[frameName]) return;
+  selectedFrame = frameName;
+
+  document.querySelectorAll("[data-frame]").forEach((button) => {
+    const active = button.dataset.frame === frameName;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+
+  document.querySelectorAll("[data-select-frame]").forEach((button) => {
+    button.style.borderColor =
+      button.dataset.selectFrame === frameName ? "#8f8878" : "";
+  });
+
+  const index = Object.keys(frames).indexOf(frameName) + 1;
+  frameLabel.textContent = `${frames[frameName].name} / 0${index}`;
+}
+
+document.querySelectorAll("[data-frame]").forEach((button) => {
+  button.addEventListener("click", () => selectFrame(button.dataset.frame));
+});
+
+document.querySelectorAll("[data-select-frame]").forEach((button) => {
   button.addEventListener("click", () => {
-    selectedFrame = button.dataset.frame || "classic";
-
-    frameButtons.forEach((item) => {
-      const isSelected = item === button;
-      item.classList.toggle("active", isSelected);
-      item.setAttribute("aria-pressed", String(isSelected));
-    });
-
-    if (cameraStream && !trackingReady) {
-      cameraMessage.textContent =
-        "Frame selected. Waiting for face tracking to initialize.";
-    } else if (trackingReady) {
-      cameraMessage.textContent =
-        "Frame updated. Look straight at your camera.";
-    }
+    selectFrame(button.dataset.selectFrame);
+    document.getElementById("try-on").scrollIntoView({ behavior: "smooth" });
   });
 });
 
-// Load MediaPipe Face Landmarker
-async function loadFaceTracking() {
-  if (faceLandmarker) {
-    return faceLandmarker;
-  }
+async function loadFaceLandmarker() {
+  if (faceLandmarker) return faceLandmarker;
 
-  if (loadingVision) {
-    return loadingVision;
-  }
+  setStatus("Preparing your virtual fitting room…");
 
-  loadingVision = (async () => {
-    const vision = await import(
-      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs"
-    );
+  const visionModule = await import(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14"
+  );
 
-    const files = await vision.FilesetResolver.forVisionTasks(
-      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
-    );
+  const { FaceLandmarker, FilesetResolver } = visionModule;
 
-    faceLandmarker = await vision.FaceLandmarker.createFromOptions(
-      files,
-      {
-        baseOptions: {
-          modelAssetPath:
-            "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-          delegate: "GPU"
-        },
-        runningMode: "VIDEO",
-        numFaces: 1,
-        minFaceDetectionConfidence: 0.5,
-        minFacePresenceConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      }
-    );
+  const vision = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+  );
 
-    return faceLandmarker;
-  })();
+  const options = {
+    baseOptions: {
+      modelAssetPath:
+        "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+      delegate: "GPU"
+    },
+    runningMode: "VIDEO",
+    numFaces: 1
+  };
 
   try {
-    return await loadingVision;
-  } catch (error) {
-    loadingVision = null;
-    throw error;
+    faceLandmarker = await FaceLandmarker.createFromOptions(vision, options);
+  } catch (gpuError) {
+    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+      ...options,
+      baseOptions: {
+        modelAssetPath: options.baseOptions.modelAssetPath,
+        delegate: "CPU"
+      }
+    });
   }
+
+  return faceLandmarker;
 }
 
-// Start the camera
 async function startCamera() {
-  if (cameraStream) return;
-
-  if (!navigator.mediaDevices?.getUserMedia) {
-    cameraMessage.textContent =
-      "Camera access is unavailable. Open this website over HTTPS or localhost.";
-    return;
-  }
-
+  if (running || initializing) return;
+  initializing = true;
   startButton.disabled = true;
-  startButton.textContent = "Starting camera...";
-  cameraMessage.textContent = "Requesting camera permission...";
 
   try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Camera access requires HTTPS or localhost in a supported browser.");
+    }
+
+    setStatus("Requesting camera permission…");
+
+    stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: {
         facingMode: "user",
@@ -145,326 +124,241 @@ async function startCamera() {
       }
     });
 
-    video.srcObject = cameraStream;
+    video.srcObject = stream;
     await video.play();
+    await loadFaceLandmarker();
 
-    cameraStage.classList.add("camera-active");
-    placeholder.hidden = true;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
 
-    startButton.disabled = true;
-    stopButton.disabled = false;
-    captureButton.disabled = false;
+    video.style.display = "block";
+    canvas.style.display = "block";
+    placeholder.style.display = "none";
 
-    cameraStatus.textContent = "Loading face tracking...";
-    cameraStatus.classList.add("is-on");
-
-    cameraMessage.textContent =
-      "Loading face tracking model. This may take a moment.";
-
-    await loadFaceTracking();
-
-    if (!cameraStream) return;
-
-    trackingReady = true;
+    running = true;
     lastVideoTime = -1;
+    stopButton.disabled = false;
+    snapshotButton.disabled = false;
+    liveLabel.textContent = "LIVE";
+    liveIndicator.classList.add("is-live");
 
-    cameraStatus.textContent = "Camera on";
-    cameraMessage.textContent =
-      "Face tracking is ready. Select a frame and look at the camera.";
-    cameraHint.textContent = "Look straight at your camera";
-
+    setStatus("Look toward the camera. Choose a frame to try it on.");
     renderFrame();
   } catch (error) {
-    console.error("TryNSee camera error:", error);
+    stopCamera(false);
 
-    stopCamera();
-
+    let message = error.message || "Unable to start the camera.";
     if (error.name === "NotAllowedError") {
-      cameraMessage.textContent =
-        "Camera permission was denied. Allow camera access in your browser settings and try again.";
+      message = "Camera permission was denied. Allow camera access in your browser settings and try again.";
     } else if (error.name === "NotFoundError") {
-      cameraMessage.textContent =
-        "No camera was found. Connect a camera and try again.";
+      message = "No camera was found. Connect a camera and try again.";
     } else if (error.name === "NotReadableError") {
-      cameraMessage.textContent =
-        "The camera may be in use by another application. Close that app and try again.";
-    } else {
-      cameraMessage.textContent =
-        "Could not start the camera or face tracking. Check your internet connection and browser permissions, then try again.";
+      message = "The camera may be in use by another app. Close it and try again.";
     }
+
+    setStatus(message);
   } finally {
-    startButton.textContent = "Enable camera ↗";
-    startButton.disabled = Boolean(cameraStream);
+    initializing = false;
+    startButton.disabled = running;
   }
 }
 
-// Find the approximate centre of each eye
-function getEyeCenter(landmarks, first, second, width, height) {
-  const a = landmarks[first];
-  const b = landmarks[second];
+function stopCamera(updateStatus = true) {
+  running = false;
 
-  return {
-    x: ((a.x + b.x) / 2) * width,
-    y: ((a.y + b.y) / 2) * height
+  if (animationId !== null) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
+
+  if (stream) {
+    stream.getTracks().forEach((track) => track.stop());
+    stream = null;
+  }
+
+  video.pause();
+  video.srcObject = null;
+  video.style.display = "none";
+  canvas.style.display = "none";
+  placeholder.style.display = "block";
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  stopButton.disabled = true;
+  snapshotButton.disabled = true;
+  startButton.disabled = false;
+  liveLabel.textContent = "STANDBY";
+  liveIndicator.classList.remove("is-live");
+
+  if (updateStatus) setStatus("Camera stopped. Your fitting room is ready again.");
+}
+
+function point(landmarks, index) {
+  const p = landmarks[index];
+  return { x: p.x * canvas.width, y: p.y * canvas.height };
+}
+
+function drawGlasses(landmarks) {
+  // MediaPipe eye landmarks: outer and inner corners of both eyes.
+  const leftOuter = point(landmarks, 33);
+  const leftInner = point(landmarks, 133);
+  const rightInner = point(landmarks, 362);
+  const rightOuter = point(landmarks, 263);
+  const bridge = point(landmarks, 168);
+
+  const leftCenter = {
+    x: (leftOuter.x + leftInner.x) / 2,
+    y: (leftOuter.y + leftInner.y) / 2
   };
-}
+  const rightCenter = {
+    x: (rightOuter.x + rightInner.x) / 2,
+    y: (rightOuter.y + rightInner.y) / 2
+  };
 
-function roundedRectPath(x, y, width, height, radius) {
-  const r = Math.min(radius, width / 2, height / 2);
-
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(
-    x + width,
-    y + height,
-    x + width - r,
-    y + height
+  const eyeDistance = Math.hypot(
+    rightCenter.x - leftCenter.x,
+    rightCenter.y - leftCenter.y
   );
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
 
-// Draw a pair of glasses over the detected eyes
-function drawGlasses(leftEye, rightEye) {
-  const style = frameStyles[selectedFrame];
-  const dx = rightEye.x - leftEye.x;
-  const dy = rightEye.y - leftEye.y;
-  const eyeDistance = Math.hypot(dx, dy);
+  if (!Number.isFinite(eyeDistance) || eyeDistance < 10) return;
 
-  if (eyeDistance < 10) return;
+  const frame = frames[selectedFrame];
+  const angle = Math.atan2(
+    rightCenter.y - leftCenter.y,
+    rightCenter.x - leftCenter.x
+  );
 
-  const angle = Math.atan2(dy, dx);
-  const lensWidth = eyeDistance * 0.53;
-  const lensHeight = lensWidth * 0.70;
-  const bridgeWidth = eyeDistance * 0.18;
-  const halfDistance = eyeDistance / 2;
+  const lensWidth = eyeDistance * frame.width;
+  const lensHeight = lensWidth * 0.69;
+  const strokeWidth = Math.max(2, canvas.width * 0.0027);
 
   ctx.save();
 
-  // Mirror the drawing to match the mirrored camera preview.
+  // The video is mirrored in CSS; mirror the overlay to match it.
   ctx.translate(canvas.width, 0);
   ctx.scale(-1, 1);
 
-  ctx.translate(
-    (leftEye.x + rightEye.x) / 2,
-    (leftEye.y + rightEye.y) / 2
-  );
-
+  ctx.translate((leftCenter.x + rightCenter.x) / 2,
+                (leftCenter.y + rightCenter.y) / 2);
   ctx.rotate(angle);
 
-  ctx.lineWidth = Math.max(2, lensWidth * style.lineWidth);
-  ctx.strokeStyle = style.color;
-  ctx.fillStyle = style.lens;
+  ctx.lineWidth = strokeWidth;
+  ctx.strokeStyle = frame.color;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
 
-  const leftX = -halfDistance - lensWidth / 2;
-  const rightX = halfDistance - lensWidth / 2;
-  const topY = -lensHeight / 2;
-
-  function drawLens(x) {
+  // Draw both lenses.
+  for (const side of [-1, 1]) {
+    const x = side * eyeDistance / 2;
     ctx.beginPath();
 
-    if (style.shape === "round") {
-      ctx.ellipse(
-        x + lensWidth / 2,
-        0,
-        lensWidth * 0.47,
-        lensHeight * 0.57,
-        0,
-        0,
-        Math.PI * 2
-      );
-    } else if (style.shape === "aviator") {
-      ctx.moveTo(x + lensWidth * 0.06, topY);
-      ctx.lineTo(x + lensWidth * 0.94, topY);
-      ctx.lineTo(x + lensWidth * 0.84, lensHeight * 0.36);
-      ctx.quadraticCurveTo(
-        x + lensWidth * 0.5,
-        lensHeight * 0.85,
-        x + lensWidth * 0.16,
-        lensHeight * 0.36
-      );
+    if (frame.style === "round") {
+      ctx.ellipse(x, 0, lensWidth * 0.48, lensHeight * 0.72, 0, 0, Math.PI * 2);
+    } else if (frame.style === "aviator") {
+      ctx.moveTo(x - lensWidth / 2, -lensHeight * 0.55);
+      ctx.lineTo(x + lensWidth / 2, -lensHeight * 0.55);
+      ctx.lineTo(x + lensWidth * 0.39, lensHeight * 0.35);
+      ctx.quadraticCurveTo(x, lensHeight * 1.12, x - lensWidth * 0.39, lensHeight * 0.35);
       ctx.closePath();
     } else {
-      const inset = style.shape === "clear" ? 7 : 2;
-      roundedRectPath(
-        x,
-        topY,
-        lensWidth,
-        lensHeight,
-        lensHeight * (style.shape === "clear" ? 0.35 : 0.18) + inset
-      );
+      const w = lensWidth / 2;
+      const h = lensHeight / 2;
+      const r = frame.style === "rect" ? h * 0.22 : h * 0.32;
+      ctx.moveTo(x - w + r, -h);
+      ctx.lineTo(x + w - r, -h);
+      ctx.quadraticCurveTo(x + w, -h, x + w, -h + r);
+      ctx.lineTo(x + w, h - r);
+      ctx.quadraticCurveTo(x + w, h, x + w - r, h);
+      ctx.lineTo(x - w + r, h);
+      ctx.quadraticCurveTo(x - w, h, x - w, h - r);
+      ctx.lineTo(x - w, -h + r);
+      ctx.quadraticCurveTo(x - w, -h, x - w + r, -h);
+      ctx.closePath();
     }
 
-    ctx.fill();
     ctx.stroke();
   }
 
-  drawLens(leftX);
-  drawLens(rightX);
-
-  // Bridge connecting both lenses
+  // Bridge and short temple arms.
   ctx.beginPath();
-  ctx.moveTo(-bridgeWidth / 2, -lensHeight * 0.16);
-  ctx.quadraticCurveTo(
-    0,
-    -lensHeight * 0.34,
-    bridgeWidth / 2,
-    -lensHeight * 0.16
-  );
+  ctx.moveTo(-lensWidth / 2, 0);
+  ctx.quadraticCurveTo(0, -lensHeight * 0.18, lensWidth / 2, 0);
   ctx.stroke();
 
-  // Side arms
   ctx.beginPath();
-  ctx.moveTo(leftX, -lensHeight * 0.22);
-  ctx.lineTo(leftX - lensWidth * 0.23, -lensHeight * 0.40);
-  ctx.moveTo(rightX + lensWidth, -lensHeight * 0.22);
-  ctx.lineTo(rightX + lensWidth * 1.23, -lensHeight * 0.40);
+  ctx.moveTo(-eyeDistance / 2 - lensWidth / 2, -lensHeight * 0.24);
+  ctx.lineTo(-eyeDistance / 2 - lensWidth * 0.78, -lensHeight * 0.38);
+  ctx.moveTo(eyeDistance / 2 + lensWidth / 2, -lensHeight * 0.24);
+  ctx.lineTo(eyeDistance / 2 + lensWidth * 0.78, -lensHeight * 0.38);
+  ctx.stroke();
+
+  // Soft reflection detail on the lens rims.
+  ctx.globalAlpha = 0.22;
+  ctx.lineWidth = Math.max(1, strokeWidth * 0.55);
+  ctx.strokeStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(-eyeDistance / 2 - lensWidth * 0.28, -lensHeight * 0.45);
+  ctx.lineTo(-eyeDistance / 2 - lensWidth * 0.02, -lensHeight * 0.45);
+  ctx.moveTo(eyeDistance / 2 + lensWidth * 0.02, -lensHeight * 0.45);
+  ctx.lineTo(eyeDistance / 2 + lensWidth * 0.28, -lensHeight * 0.45);
   ctx.stroke();
 
   ctx.restore();
 }
 
-// Process video and update glasses on each animation frame
 function renderFrame() {
-  if (!cameraStream || !faceLandmarker) return;
+  if (!running) return;
 
-  if (
-    video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
-    video.videoWidth > 0
-  ) {
-    if (
-      canvas.width !== video.videoWidth ||
-      canvas.height !== video.videoHeight
-    ) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-    }
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+      video.currentTime !== lastVideoTime) {
+    lastVideoTime = video.currentTime;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (video.currentTime !== lastVideoTime) {
-      lastVideoTime = video.currentTime;
+    try {
+      const result = faceLandmarker.detectForVideo(video, performance.now());
+      const landmarks = result.faceLandmarks?.[0];
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      try {
-        const result = faceLandmarker.detectForVideo(
-          video,
-          performance.now()
-        );
-
-        if (result.faceLandmarks?.length) {
-          const landmarks = result.faceLandmarks[0];
-
-          // Eye corner landmarks from MediaPipe Face Landmarker.
-          const leftEye = getEyeCenter(
-            landmarks, 33, 133, canvas.width, canvas.height
-          );
-          const rightEye = getEyeCenter(
-            landmarks, 362, 263, canvas.width, canvas.height
-          );
-
-          drawGlasses(leftEye, rightEye);
-
-          cameraHint.textContent = "Frame follows your eye position";
-        } else {
-          cameraHint.textContent = "Move your face into the centre";
-        }
-      } catch (error) {
-        console.error("Face tracking error:", error);
+      if (landmarks) {
+        drawGlasses(landmarks);
+        setStatus("Face detected — move naturally to explore your look.");
+      } else {
+        setStatus("Move into the frame and look toward the camera.");
       }
+    } catch (error) {
+      console.error("Face tracking error:", error);
     }
   }
 
   animationId = requestAnimationFrame(renderFrame);
 }
 
-// Take a mirrored snapshot including the glasses overlay
-function capturePhoto() {
-  if (!cameraStream || !video.videoWidth) return;
+function takeSnapshot() {
+  if (!running || !video.videoWidth) return;
 
-  const photoCanvas = document.createElement("canvas");
-  photoCanvas.width = video.videoWidth;
-  photoCanvas.height = video.videoHeight;
+  const output = document.createElement("canvas");
+  output.width = video.videoWidth;
+  output.height = video.videoHeight;
+  const outputCtx = output.getContext("2d");
 
-  const photoCtx = photoCanvas.getContext("2d");
-
-  photoCtx.save();
-  photoCtx.translate(photoCanvas.width, 0);
-  photoCtx.scale(-1, 1);
-  photoCtx.drawImage(
-    video,
-    0,
-    0,
-    photoCanvas.width,
-    photoCanvas.height
-  );
-  photoCtx.restore();
-
-  // The overlay canvas already contains the mirrored glasses.
-  photoCtx.drawImage(canvas, 0, 0);
+  // Save a mirrored image to match the live preview.
+  outputCtx.translate(output.width, 0);
+  outputCtx.scale(-1, 1);
+  outputCtx.drawImage(video, 0, 0, output.width, output.height);
+  outputCtx.drawImage(canvas, 0, 0, output.width, output.height);
 
   const link = document.createElement("a");
-  link.download = "trynsee-snapshot.png";
-  link.href = photoCanvas.toDataURL("image/png");
+  link.download = `trynsee-${selectedFrame}-${Date.now()}.png`;
+  link.href = output.toDataURL("image/png");
   link.click();
 
-  cameraMessage.textContent =
-    "Your snapshot has been downloaded to your device.";
+  setStatus("Snapshot saved to your downloads.");
 }
 
-// Stop camera and release resources
-function stopCamera() {
-  if (animationId !== null) {
-    cancelAnimationFrame(animationId);
-    animationId = null;
-  }
-
-  if (cameraStream) {
-    cameraStream.getTracks().forEach((track) => track.stop());
-    cameraStream = null;
-  }
-
-  video.pause();
-  video.srcObject = null;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  cameraStage.classList.remove("camera-active");
-  placeholder.hidden = false;
-
-  startButton.disabled = false;
-  stopButton.disabled = true;
-  captureButton.disabled = true;
-
-  cameraStatus.textContent = "Camera off";
-  cameraStatus.classList.remove("is-on");
-
-  cameraMessage.textContent =
-    "Your camera starts only when you allow access.";
-
-  cameraHint.textContent = "Position your face in the centre";
-  trackingReady = false;
-  lastVideoTime = -1;
-}
-
-// Connect the controls
 startButton.addEventListener("click", startCamera);
-stopButton.addEventListener("click", stopCamera);
-captureButton.addEventListener("click", capturePhoto);
+stopButton.addEventListener("click", () => stopCamera());
+snapshotButton.addEventListener("click", takeSnapshot);
 
-// Update the footer year
-const yearElement = document.getElementById("year");
+selectFrame("classic");
 
-if (yearElement) {
-  yearElement.textContent = new Date().getFullYear();
-}
-
-// Release the camera when the page is closed or left
-window.addEventListener("pagehide", stopCamera);
+window.addEventListener("pagehide", () => {
+  if (stream) stream.getTracks().forEach((track) => track.stop());
+});
