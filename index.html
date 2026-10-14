@@ -1,0 +1,240 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101014">
+  <meta name="description" content="TryNSee lets you virtually try glasses using your camera. Find your style before you buy.">
+  <title>TryNSee | See Yourself in Style</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="navbar">
+    <a href="#" class="logo">TryN<span>See</span><i>.</i></a>
+
+    <nav>
+      <a href="#try-on">Virtual Try-On</a>
+      <a href="#frames">Frames</a>
+      <a href="#how-it-works">How It Works</a>
+    </nav>
+
+    <a class="nav-cta" href="#try-on">Try it now ↗</a>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-content">
+        <div class="eyebrow">
+          <span class="live-dot"></span>
+          YOUR STYLE, YOUR RULES
+        </div>
+
+        <h1>Find your<br>perfect <span>frame.</span></h1>
+
+        <p class="hero-description">
+          Meet the glasses that match your vibe. Try different frames
+          on your face, right from your screen.
+        </p>
+
+        <div class="hero-actions">
+          <a class="button button-primary" href="#try-on">
+            Try glasses virtually <span>↗</span>
+          </a>
+          <a class="button button-secondary" href="#frames">Explore frames</a>
+        </div>
+
+        <div class="hero-note">
+          <span>✓</span> No app needed
+          <span>✓</span> Camera-powered
+          <span>✓</span> Find your look
+        </div>
+      </div>
+
+      <div class="hero-art">
+        <div class="art-glow"></div>
+        <div class="art-label">THE NEW WAY TO TRY</div>
+
+        <div class="hero-glasses" aria-label="Illustration of stylish glasses">
+          <svg viewBox="0 0 440 180" role="img" aria-label="Black eyeglasses">
+            <defs>
+              <linearGradient id="lens" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity=".17"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity=".015"/>
+              </linearGradient>
+            </defs>
+            <path d="M16 35 Q110 15 202 42 L218 57 L234 42 Q326 15 424 35"
+              fill="none" stroke="#17171c" stroke-width="12" stroke-linecap="round"/>
+            <path d="M18 42 L32 112 Q40 158 103 158 Q164 158 181 113 L200 58"
+              fill="url(#lens)" stroke="#17171c" stroke-width="12" stroke-linejoin="round"/>
+            <path d="M240 58 L259 113 Q276 158 337 158 Q400 158 408 112 L422 42"
+              fill="url(#lens)" stroke="#17171c" stroke-width="12" stroke-linejoin="round"/>
+            <path d="M200 58 Q220 47 240 58"
+              fill="none" stroke="#17171c" stroke-width="12" stroke-linecap="round"/>
+            <path d="M48 55 L83 51" stroke="#ffffff" stroke-opacity=".6" stroke-width="4" stroke-linecap="round"/>
+            <path d="M278 55 L313 51" stroke="#ffffff" stroke-opacity=".6" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <div class="floating-card floating-top">
+          <span class="mini-icon">✦</span>
+          <div><strong>Your next look</strong><small>One click away</small></div>
+        </div>
+
+        <div class="floating-card floating-bottom">
+          <span class="check-icon">✓</span>
+          <div><strong>Find your fit</strong><small>Made for your style</small></div>
+        </div>
+
+        <div class="art-bottom-text">LOOK GOOD. FEEL GOOD.</div>
+      </div>
+    </section>
+
+    <section class="try-section" id="try-on">
+      <div class="section-heading">
+        <div>
+          <div class="eyebrow">THE MAGIC MIRROR</div>
+          <h2>It's your turn to <span>try.</span></h2>
+        </div>
+        <p>Turn on your camera and see how different frames look on you.</p>
+      </div>
+
+      <div class="try-layout">
+        <div class="camera-card">
+          <div class="camera-topbar">
+            <span><span class="live-dot"></span> VIRTUAL MIRROR</span>
+            <span class="camera-status" id="camera-status">Camera off</span>
+          </div>
+
+          <div class="camera-stage" id="camera-stage">
+            <video id="camera-video" autoplay muted playsinline></video>
+            <canvas id="camera-canvas"></canvas>
+
+            <div class="camera-placeholder" id="camera-placeholder">
+              <div class="camera-symbol">◎</div>
+              <h3>Your virtual mirror</h3>
+              <p>Allow camera access to try on your favourite frames.</p>
+              <button class="button button-primary" id="start-camera">
+                Enable camera ↗
+              </button>
+            </div>
+
+            <div class="camera-hint" id="camera-hint">
+              Position your face in the centre
+            </div>
+          </div>
+
+          <div class="camera-controls">
+            <button class="button button-primary" id="capture-photo" disabled>
+              Take snapshot ↓
+            </button>
+            <button class="button button-secondary" id="stop-camera" disabled>
+              Turn camera off
+            </button>
+          </div>
+
+          <p class="camera-message" id="camera-message" role="status">
+            Your camera starts only when you allow access.
+          </p>
+        </div>
+
+        <aside class="frame-panel" id="frames">
+          <div class="panel-heading">
+            <div>
+              <div class="eyebrow">THE COLLECTION</div>
+              <h3>Choose your frame</h3>
+            </div>
+            <span class="frame-count">04 STYLES</span>
+          </div>
+
+          <p class="panel-description">Select a style to preview it on the mirror.</p>
+
+          <div class="frame-options">
+            <button class="frame-option active" data-frame="classic" aria-pressed="true">
+              <span class="frame-preview classic-preview">◉</span>
+              <span class="frame-info"><strong>Classic</strong><small>Timeless & bold</small></span>
+              <span class="frame-arrow">↗</span>
+            </button>
+
+            <button class="frame-option" data-frame="round" aria-pressed="false">
+              <span class="frame-preview round-preview">◎</span>
+              <span class="frame-info"><strong>Round</strong><small>Creative & cool</small></span>
+              <span class="frame-arrow">↗</span>
+            </button>
+
+            <button class="frame-option" data-frame="aviator" aria-pressed="false">
+              <span class="frame-preview aviator-preview">◇</span>
+              <span class="frame-info"><strong>Aviator</strong><small>Confident & iconic</small></span>
+              <span class="frame-arrow">↗</span>
+            </button>
+
+            <button class="frame-option" data-frame="clear" aria-pressed="false">
+              <span class="frame-preview clear-preview">▢</span>
+              <span class="frame-info"><strong>Crystal</strong><small>Light & minimal</small></span>
+              <span class="frame-arrow">↗</span>
+            </button>
+          </div>
+
+          <div class="privacy-note">
+            <span>♧</span>
+            <div>
+              <strong>Your privacy matters</strong>
+              <p>The camera runs in your browser. This demo does not upload your photo to a server.</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="how-section" id="how-it-works">
+      <div class="eyebrow">SIMPLE BY DESIGN</div>
+      <h2>Three steps. <span>One new you.</span></h2>
+
+      <div class="steps-grid">
+        <article class="step-card">
+          <span class="step-number">01</span>
+          <div class="step-icon">◎</div>
+          <h3>Open your mirror</h3>
+          <p>Allow camera access to get started. No app download needed.</p>
+        </article>
+
+        <article class="step-card">
+          <span class="step-number">02</span>
+          <div class="step-icon">◇</div>
+          <h3>Pick your frame</h3>
+          <p>Explore different frame styles and find your favourite look.</p>
+        </article>
+
+        <article class="step-card">
+          <span class="step-number">03</span>
+          <div class="step-icon">✦</div>
+          <h3>Own your style</h3>
+          <p>Take a snapshot of your look and share or save it.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="closing-cta">
+      <div>
+        <div class="eyebrow">YOUR FACE. YOUR FASHION.</div>
+        <h2>Ready to see a new you?</h2>
+      </div>
+      <a class="button button-primary" href="#try-on">Start trying ↗</a>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <a href="#" class="logo">TryN<span>See</span><i>.</i></a>
+    <p>See Yourself in Style.</p>
+    <span>© <span id="year">2026</span> TryNSee. Made for your next look.</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
+```
